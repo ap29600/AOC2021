@@ -41,6 +41,6 @@ solve :: proc (days: int) {
 }
 
 main :: proc () {
-  solve(days = 80)
-  solve(days = 256)
+  solve( days = 80 )
+  solve( days = 256 )
 }
