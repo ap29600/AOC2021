@@ -64,7 +64,7 @@ count :: proc (d: Display) -> int {
 make_lookup :: proc (u: []string) -> (digits: [10]Display) {
   int_5 := Display{1, 2, 3, 4, 5, 6, 7}
   int_6 := int_5
-  for d in slice.mapper(u, parse_display) { 
+  for d in slice.mapper(u, parse_display, context.temp_allocator) { 
     switch count(d) {
       case 2: digits[1] = d
       case 3: digits[7] = d
@@ -84,7 +84,7 @@ make_lookup :: proc (u: []string) -> (digits: [10]Display) {
 }
 
 parse_int_from_segments :: proc (digits: []string, lookup: ^[10]Display) -> (res: int) {
-  for d in slice.mapper(digits, parse_display) {
+  for d in slice.mapper(digits, parse_display, context.temp_allocator) {
     for l, i in lookup {
       if d == l { res = res * 10 + i; break }
     }
@@ -103,6 +103,7 @@ part2 :: proc (entries: []Entry) {
 
 main :: proc () {
   entries := slice.mapper(strings.split(strings.trim_space(input), "\n"), parse_entry)
+  defer delete(entries)
   part1(entries)
   part2(entries)
 }
