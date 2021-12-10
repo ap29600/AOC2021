@@ -37,11 +37,11 @@ solve :: proc (lines: [][]u8) {
   syntax_error_score := 0
   comp_scores := [dynamic]int{}
   defer delete(comp_scores)
+  contexts := [dynamic]u8{}
+  defer delete(contexts)
 
   outer: for line in lines {
-    contexts := [dynamic]u8{}
-    defer delete(contexts)
-
+    defer clear(&contexts)
     for c in line {
       switch (c) {
         case '(', '[', '{', '<':
