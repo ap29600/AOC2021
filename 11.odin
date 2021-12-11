@@ -22,7 +22,7 @@ when testing {
   input :: string(#load("11.txt"))
 }
 
-Board :: [10][10]i8
+Board :: [10][10]u8
 
 contains :: proc (v: ^[dynamic]int, e: int) -> bool {
   for f in v {if e == f {return true}}
@@ -51,7 +51,7 @@ part1 :: proc (board: ^Board) {
   flashes := [dynamic]int{}
   for t in 1..steps {
     clear(&flashes)
-    for cell, p in cast(^[100]i8)(&board) {
+    for cell, p in cast(^[100]u8)(&board) {
       cell = (cell + 1) % 10
       if cell == 0 {append(&flashes, p)}
     }
@@ -71,7 +71,7 @@ part2 :: proc (board: ^Board) {
   t := 0
   for ; len(flashes) < 100; t += 1 {
     clear(&flashes)
-    for cell, p in cast(^[100]i8)(&board) {
+    for cell, p in cast(^[100]u8)(&board) {
       cell = (cell + 1) % 10
       if cell == 0 {append(&flashes, p)}
     }
@@ -87,7 +87,7 @@ main :: proc () {
   board := Board{}
   s, ok := strings.remove_all(input, "\n")
   defer delete(s)
-  for r, i in s {board[i/10][i%10] = i8(r - '0')}
+  for r, i in s {board[i/10][i%10] = u8(r - '0')}
 
   part1(&board)
   part2(&board)
