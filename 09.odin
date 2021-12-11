@@ -3,8 +3,6 @@ package aoc2021
 import "core:fmt"
 import "core:slice"
 import "core:strings"
-import test "core:testing"
-
 
 testing :: false
 when testing {
