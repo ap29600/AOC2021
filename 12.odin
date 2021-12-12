@@ -44,9 +44,8 @@ main :: proc () {
     append(&(cs[labels[s[0]]].paths), labels[s[1]])
     append(&(cs[labels[s[1]]].paths), labels[s[0]])
   }
-  fmt.println(cs)
   fmt.println("Part1:", part1(cs[0], cs, {0}))
-  fmt.println("Part1:", part2(cs[0], cs, {0}))
+  fmt.println("Part2:", part2(cs[0], cs, {0}))
 }
 
 part1 :: proc (c: cave, cs: cave_system, visited: bit_set[0..63]) -> int {
