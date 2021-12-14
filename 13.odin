@@ -79,8 +79,8 @@ part2 :: proc (dots: []Dot, folds: []Fold) {
     }
   }
 
-  canvas : [5 * 8][6]u8 ='.'
-  for dot in dots { canvas[dot.x][dot.y] = '#' }
+  canvas : [6][5 * 8]u8 ='.'
+  for dot in dots { canvas[dot.y][dot.x] = '#' }
   for line in &canvas { fmt.println(string(line[:])) }
 }
 
