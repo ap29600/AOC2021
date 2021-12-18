@@ -71,20 +71,19 @@ print_snail_number :: proc (n: SnailNum) {
 reduce :: proc (e: ^SnailNum) {
   outer: for go := true; go; {
     go = false
+    // explode
     for i in 0..<len(e.digits) {
       if e.depths[i] > 4 {
-        // explode
-
         // carry left
-        carry_left: for j in 1..i do if e.digits[i - j] >= 0 {
+        for j in 1..i do if e.digits[i - j] >= 0 {
           e.digits[i - j] += e.digits[i]
-          break carry_left
+          break 
         }
 
         //carry right
-        carry_right: for j in 2..<len(e.digits) - i do if e.digits[i + j] >= 0 {
+        for j in 2..<len(e.digits) - i do if e.digits[i + j] >= 0 {
           e.digits[i + j] += e.digits[i + 1]
-          break carry_right
+          break 
         }
         
         // replace the pair with a 0
@@ -104,17 +103,17 @@ reduce :: proc (e: ^SnailNum) {
       }
     }
 
+    // split
     for i in 0..<len(e.digits) {
       if e.digits[i] > 9 {
-        // split
-        val := e.digits[i]
-
         // insert a new pair
+        val := e.digits[i]
         e.digits[i] = -1
 
         // expand the pair
         resize(&e.digits, len(e.digits) + 2)
         resize(&e.depths, len(e.depths) + 2)
+
         if (len(e.digits) > i + 3) {
           mem.copy(&e.digits[i+3], &e.digits[i+1], len(e.digits[i+3:])*size_of(e.digits[0]))
           mem.copy(&e.depths[i+3], &e.depths[i+1], len(e.depths[i+3:])*size_of(e.depths[0]))
@@ -122,7 +121,6 @@ reduce :: proc (e: ^SnailNum) {
 
         e.digits[i+1] = val/2
         e.digits[i+2] = (val+1) / 2
-
         e.depths[i+1] = e.depths[i] + 1
         e.depths[i+2] = e.depths[i] + 1
 
