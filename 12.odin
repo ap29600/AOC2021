@@ -3,6 +3,7 @@ package aoc12
 import "core:fmt"
 import "core:slice"
 import "core:strings"
+import "core:time"
 
 ITERATIVE :: false 
 
@@ -46,13 +47,14 @@ main :: proc () {
     append(&(cs[labels[s[0]]].paths), labels[s[1]])
     append(&(cs[labels[s[1]]].paths), labels[s[0]])
   }
-    fmt.println("Part1_iterative:", part1_iterative(cs))
-    fmt.println("Part2_iterative:", part2_iterative(cs))
     fmt.println("Part1:", part1(cs[0], cs, {0}))
     fmt.println("Part2:", part2(cs[0], cs, {0}))
+
+    fmt.println("Part1_iterative:", part1_iterative(cs))
+    fmt.println("Part2_iterative:", part2_iterative(cs))
 }
 
-part1 :: proc (c: cave, cs: cave_system, visited: bit_set[0..63]) -> int #no_bounds_check {
+part1 :: proc "contextless" (c: cave, cs: cave_system, visited: bit_set[0..63]) -> int #no_bounds_check {
   total_paths := 0
   for next in c.paths {
     switch {
@@ -98,7 +100,7 @@ part1_iterative :: proc (cs: cave_system) -> (total_paths: int) #no_bounds_check
   return total_paths
 }
 
-part2 :: proc (c: cave, cs: cave_system, visited: bit_set[0..63], jolly := true) -> int #no_bounds_check{
+part2 :: proc "contextless" (c: cave, cs: cave_system, visited: bit_set[0..63], jolly := true) -> int #no_bounds_check{
   total_paths := 0
   for next in c.paths {
     switch {
