@@ -4,22 +4,23 @@ import "core:fmt"
 import "core:slice"
 import "core:mem"
 import "core:strings"
+import "core:intrinsics"
 
-SnailNum :: struct {
-  digits: [dynamic]int,
-  depths: [dynamic]int,
+
+SnailDigit :: struct {
+  value: int,
+  depth: int,
 }
+SnailNum :: [dynamic] SnailDigit
 
 parse_snailnum :: proc (s: string) -> (res: SnailNum) {
   depth := 0
   for c in s {
     switch (c) {
       case '0'..'9':
-        append(&res.digits, int(c) - '0')
-        append(&res.depths, depth)
+        append(&res, SnailDigit{int(c) - '0', depth})
       case '[':
-        append(&res.digits, -1)
-        append(&res.depths, depth)
+        append(&res, SnailDigit{-1, depth})
         depth += 1;   
       case ']':
         depth -= 1;
@@ -29,116 +30,98 @@ parse_snailnum :: proc (s: string) -> (res: SnailNum) {
   return res
 }
 
-add :: proc (a, b: SnailNum) -> SnailNum {
-  res := SnailNum { 
-    [dynamic]int{-1},
-    [dynamic]int{0},
-  }
-  for i in 0..<len(a.digits) {
-    append(&res.digits, a.digits[i])
-    append(&res.depths, a.depths[i] + 1)
-  }
-  for i in 0..<len(b.digits) {
-    append(&res.digits, b.digits[i])
-    append(&res.depths, b.depths[i] + 1)
-  }
+add :: proc (a, b: SnailNum) -> SnailNum #no_bounds_check {
+  res := SnailNum { {-1, -1} }
+
+  resize(&res, len(a) + len(b) + 1)
+
+  off := len(a) + 1
+  mem.copy(&res[1], &a[0], len(a) * size_of(a[0]))
+  mem.copy(&res[off], &b[0], len(b) * size_of(b[0]))
+  for d in &res {d.depth += 1}
+
   reduce(&res)
   return res
 }
 
+add_in_place :: proc (a: ^SnailNum, b: SnailNum) {
+  insert_at_elem(a, 0, SnailDigit{-1, -1})
+  off := len(a)
+  resize(a, len(a) + len(b))
+  mem.copy(&a[off], &b[0], len(b) * size_of(b[0]))
+  for d in a {d.depth += 1}
+
+  reduce(a)
+}
+
 print_snail_number :: proc (n: SnailNum) {
-  for i in 0..<len(n.digits) {
-    if i > 0 do for _ in n.depths[i]..<n.depths[i-1] {
-      fmt.printf("]")
-    }
-    switch (n.digits[i]) {
-    case -1:
-      fmt.printf("[")
-    case :
-      if n.digits[i-1] == -1 {
-        fmt.printf("%d", n.digits[i])
-      } else {
-        fmt.printf(",%d", n.digits[i])
-      }
+  fmt.printf("[")
+  for i in 1..<len(n) {
+    for _ in n[i].depth..<n[i-1].depth { fmt.printf("]") }
+
+    switch (n[i].value) {
+      case -1: fmt.printf("[")
+      case :
+        if n[i-1].value == -1 {
+          fmt.printf("%d", n[i].value)
+        } else {
+          fmt.printf(",%d", n[i].value)
+        }
     }
   }
-  for _ in 0..<n.depths[len(n.depths) - 1] {
+  for _ in 0..<n[len(n) - 1].depth {
       fmt.printf("]")
   }
   fmt.println("")
 }
 
-reduce :: proc (e: ^SnailNum) {
-  outer: for go := true; go; {
-    go = false
+reduce :: proc (e: ^SnailNum) #no_bounds_check {
+  outer: for {
     // explode
-    for i in 0..<len(e.digits) {
-      if e.depths[i] > 4 {
-        // carry left
-        for j in 1..i do if e.digits[i - j] >= 0 {
-          e.digits[i - j] += e.digits[i]
+    for i in 0..<len(e) {
+      if e[i].depth > 4 {
+
+        // carry left and right
+        for j in 1..i do if e[i - j].value >= 0 {
+          e[i - j].value += e[i].value
           break 
         }
-
-        //carry right
-        for j in 2..<len(e.digits) - i do if e.digits[i + j] >= 0 {
-          e.digits[i + j] += e.digits[i + 1]
+        for j in 2..<len(e) - i do if e[i + j].value >= 0 {
+          e[i + j].value += e[i + 1].value
           break 
         }
         
         // replace the pair with a 0
-        e.digits[i - 1] = 0 
+        e[i - 1].value = 0 
+        remove_range(e, i, i+2)
 
-
-        // collapse the pair
-        if i+2 < len(e.digits) {
-          mem.copy(&e.digits[i], &e.digits[i+2], len(e.digits[i+2:]) * size_of(e.digits[0]))
-          mem.copy(&e.depths[i], &e.depths[i+2], len(e.depths[i+2:]) * size_of(e.depths[0]))
-        }
-        resize(&e.digits, len(e.digits) - 2)
-        resize(&e.depths, len(e.depths) - 2)
-
-        go = true
         continue outer
       }
     }
 
     // split
-    for i in 0..<len(e.digits) {
-      if e.digits[i] > 9 {
-        // insert a new pair
-        val := e.digits[i]
-        e.digits[i] = -1
+    for i in 0..<len(e) {
+      if e[i].value > 9 {
+        value, depth := e[i].value, e[i].depth
 
-        // expand the pair
-        resize(&e.digits, len(e.digits) + 2)
-        resize(&e.depths, len(e.depths) + 2)
+        e[i].value = -1
+        insert_at_elems(e, i+1, SnailDigit{value / 2, depth + 1}, SnailDigit{(value + 1) / 2, depth + 1})
 
-        if (len(e.digits) > i + 3) {
-          mem.copy(&e.digits[i+3], &e.digits[i+1], len(e.digits[i+3:])*size_of(e.digits[0]))
-          mem.copy(&e.depths[i+3], &e.depths[i+1], len(e.depths[i+3:])*size_of(e.depths[0]))
-        }
-
-        e.digits[i+1] = val/2
-        e.digits[i+2] = (val+1) / 2
-        e.depths[i+1] = e.depths[i] + 1
-        e.depths[i+2] = e.depths[i] + 1
-
-        go = true
         continue outer
       }
     }
+    return
   }
 }
 
 magnitude :: proc (e: SnailNum) -> int {
-  go :: proc (digits: []int, depths: []int, start_depth: int) -> int {
-    if digits[0] >= 0 { return digits[0] }
+  go :: proc (e: []SnailDigit, start_depth: int) -> int #no_bounds_check {
+    if e[0].value >= 0 { return e[0].value }
 
-    for d, i in depths[2:] {
-      if d == start_depth + 1 {
-        left := go(digits[1:i+2], depths[1:i+2], start_depth + 1)
-        right := go(digits[i+2:], depths[i+2:], start_depth + 1)
+    for d, i in e[2:] {
+      if d.depth == start_depth + 1 {
+        left := go(e[1:i+2], start_depth + 1)
+        right := go(e[i+2:], start_depth + 1)
         return 3 * left + 2 * right
       }
     }
@@ -147,31 +130,28 @@ magnitude :: proc (e: SnailNum) -> int {
     return -1
   }
 
-  return go(e.digits[:], e.depths[:], 0)
+  return go(e[:], 0)
 }
 
-to_string :: proc (e: SnailNum) -> string {
-  return fmt.tprintf("{{ {} \n  {} }} ", e.digits, e.depths)
-}
 
 main :: proc () {
   numbers := slice.mapper(strings.split(strings.trim_space(input), "\n"), parse_snailnum)
   total := numbers[0]
-  for other, i in numbers[1:] { 
-    res := add(total, other)
-    if i > 0 {delete(total.digits); delete(total.depths)}
+  for other in numbers[2:] { 
+    res := add(total, other) 
     total = res
   }
   fmt.println("Part1:", magnitude(total))
 
+  // sum := SnailNum{}
   max_magnitude := 0
   for n, i in numbers {
     for m, j in numbers {
       if i != j {
+
         sum := add(n, m)
         max_magnitude = max(max_magnitude, magnitude(sum))
-        delete(sum.digits)
-        delete(sum.depths)
+        delete(sum)
       }
     }
   }
