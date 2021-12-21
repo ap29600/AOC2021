@@ -60,7 +60,8 @@ part1 :: proc (scanners: []Scanner) {
 
               off := beacon_k - mat * beacon_s
 
-              count_k := 0 for beacon_k_tmp in &known.scan {
+              count_k := 0 
+              for beacon_k_tmp in &known.scan {
                 if norm_i(beacon_k_tmp - off) <= 1000 { count_k += 1 }
               }
               if count_k < overlap_num { continue }

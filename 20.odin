@@ -4,102 +4,60 @@ import "core:fmt"
 import "core:slice"
 import "core:strings"
 
-
 Pos :: distinct[2]int
-Board :: distinct map[Pos]int
 
 main :: proc () {
   s := strings.split(strings.trim_space(input), "\n\n")
   header := transmute([]u8)(s[0])
   pixmap := transmute([][]u8)strings.split(s[1], "\n")
 
-  board := Board{}
-
-  for line, y in &pixmap {
-    for pixel, x in &line {
-      if pixel == '#' {board[{x,y}] = 1}
-    }
-  }
-
-  part1(board, header)
+  part1(pixmap, header)
 }
 
-part1 :: proc (b: Board, header: []u8) {
-  b := b
+in_bounds :: proc (p, l, h: Pos) -> bool {
+  return max((h.x - p.x)*(l.x - p.x), 
+             (h.y - p.y)*(l.y - p.y)) <= 0
+} 
+
+part1 :: proc (board: [][]u8, header: []u8) {
+  board := board
   offsets :: []Pos{
     {-1, -1}, {0, -1}, {1, -1}, 
     {-1,  0}, {0,  0}, {1,  0}, 
     {-1,  1}, {0,  1}, {1,  1},
   }
+  low, high := Pos{0, 0}, Pos{len(board[0]) - 1, len(board) - 1}
 
-  when ODIN_DEBUG || true {
-    min_x, min_y := 0, 0
-    max_x, max_y := 0, 0
-    for p in b {
-      min_x = min(min_x, p.x)
-      min_y = min(min_y, p.y)
-
-      max_x = max(max_x, p.x)
-      max_y = max(max_y, p.y)
-    }
-    fmt.println("bounds: ",min_x, min_y, ":", max_x, max_y)
-
-    buf := make([]u8, (max_x - min_x + 1) * (max_y - min_y + 1))
-    defer delete(buf)
-    for p in &buf {p = '.'}
-
-    for p in b {
-      buf[(p.y - min_y) * (max_x - min_x + 1) + (p.x - min_x)] = '#'
-    }
-
-    for i in 0..(max_y - min_y) {
-      fmt.println(transmute(string)buf[i * (max_x - min_x + 1): (i + 1) * (max_x - min_x + 1)])
-    }
-  }
-
-  for i in 1..2 {
-    new_board := Board{}
-
-    for p in b {
-      for off in offsets {
-        if p + off not_in new_board {
-          total := 0
-          for off2 in offsets { total = total * 2 + b[p + off + off2] } 
-          if header[total] == '#' {new_board[p + off] = 1}
+  for i in 0..49 {
+    
+    new_board := make([][]u8, len(board) + 2, context.temp_allocator)
+    for y in low.y-1..high.y+1 {
+      new_line := make([]u8, len(board[0]) + 2, context.temp_allocator)
+      new_board[y - low.y + 1] = new_line
+      for x in low.x-1..high.x+1 {
+        index := 0
+        for off in offsets {
+          p := off + {x, y}
+          bit := int(board[p.y - low.y][p.x - low.x] == '#') if 
+                 in_bounds(p, low, high) else ((i%2) * int(header[0] == '#'))
+          index = index * 2 + bit
         }
+        new_line[x - low.x + 1] = header[index]
       }
     }
 
+    board = new_board
 
-    b = new_board
-
-    when ODIN_DEBUG || true {
-      min_x, min_y := 0, 0
-      max_x, max_y := 0, 0
-      for p in b {
-        min_x = min(min_x, p.x)
-        min_y = min(min_y, p.y)
-
-        max_x = max(max_x, p.x)
-        max_y = max(max_y, p.y)
-      }
-      fmt.println("bounds: ",min_x, min_y, ":", max_x, max_y)
-
-      buf := make([]u8, (max_x - min_x + 1) * (max_y - min_y + 1))
-      defer delete(buf)
-      for p in &buf {p = '.'}
-
-      for p in b {
-        buf[(p.y - min_y) * (max_x - min_x + 1) + (p.x - min_x)] = '#'
-      }
-
-      for i in 0..(max_y - min_y) {
-        fmt.println(transmute(string)buf[i * (max_x - min_x + 1): (i + 1) * (max_x - min_x + 1)])
-      }
+    low -= {1, 1}
+    high += {1, 1}
+    if i == 1 || i == 49 {
+      count := 0
+      for line in board do for cell in line { if cell == '#' { count += 1 } }
+      fmt.println("At step", i, ":" ,count)
     }
   }
 
-  fmt.println(len(b))
+  free_all(context.temp_allocator)
 }
 
 when ODIN_DEBUG {
