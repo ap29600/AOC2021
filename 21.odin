@@ -101,4 +101,3 @@ quantum_die :: proc (players: [2]int) {
 
   fmt.println("Part2:", max(wins[0], wins[1]))
 }
-
