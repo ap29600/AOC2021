@@ -55,7 +55,9 @@ split :: proc (a, b: Region) ->([dynamic]Region, Kind) {
   slice.sort(ys[:])
   slice.sort(zs[:])
 
-  result := [dynamic]Region{}
+  // temporary allocator is a ring-buffer, it's fine to
+  // return this array and leak it later
+  result := make([dynamic]Region, context.temp_allocator)
 
   for i in 0..2 do if xs[i] < xs[i+1] {
     for j in 0..2 do if ys[j] < ys[j+1] {
@@ -79,7 +81,8 @@ parse_region :: proc (s: string) -> (res: Region) {
     lims := strings.split(range[2:], "..", context.temp_allocator)
     res.ranges[i][0], _ = strconv.parse_int(lims[0])
     res.ranges[i][1], _ = strconv.parse_int(lims[1])
-    res.ranges[i][1] += 1
+    res.ranges[i][1] += 1 
+    // the logic is a lot better if the intervals are open to the right: [min, max] becomes [min, max + 1)
   }
   return res
 }
@@ -99,27 +102,32 @@ main :: proc() {
       parts, kind := split(regions[i], command)
       switch kind {
         case .Glob:
+          // the command ended up having no effect due to turning on
+          // an area which was already on.
           continue cmds
         case .Split:
+          // the command partially overlapped with a region.
+          // we add the splits to the list of regions
           for part in parts {append(&regions, part)}
           unordered_remove(&regions, i)
           i -= 1
         case .None:
+          // there was no overlap
       }
     }
+    // finally add the new region. this gets skipped in the .Glob
+    // case above, because the new region was redundant.
     if command.state do append(&regions, command)
   }
 
-
-  part1_range := Range{-50, 51}
-  part2_range := Range{min(int), max(int)}
+  // see note on open ranges in the parsing proc.
+  part1_range := Range{-50, 51} 
   region1 := Region{ranges = part1_range}
-  region2 := Region{ranges = part2_range}
 
   part1, part2 := 0, 0
   for region in &regions {
     part1 += area(clamp_to_region(region, region1))
-    part2 += area(clamp_to_region(region, region2))
+    part2 += area(region)
   }
   fmt.println("Part 1:", part1)
   fmt.println("Part 2:", part2)
